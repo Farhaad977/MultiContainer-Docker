@@ -14,6 +14,7 @@ after_success:
   - docker build -t farhaadsheikhmohammed873/server -f ./server/Dockerfile ./server
   - docker build -t farhaadsheikhmohammed873/worker -f ./worker/Dockerfile ./worker
   - docker build -t farhaadsheikhmohammed873/nginx  -f ./nginx/Dockerfile ./nginx
+  - echo "Attempting Docker login..."
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
   - docker push $DOCKER_ID/client
   - docker push $DOCKER_ID/server
