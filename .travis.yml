@@ -1,6 +1,6 @@
 language: node_js
 node_js:
-  - "18"
+  - "16"
 sudo: required
 services:
   - docker
@@ -14,13 +14,11 @@ after_success:
   - docker build -t farhaadsheikhmohammed873/server -f ./server/Dockerfile ./server
   - docker build -t farhaadsheikhmohammed873/worker -f ./worker/Dockerfile ./worker
   - docker build -t farhaadsheikhmohammed873/nginx  -f ./nginx/Dockerfile ./nginx
-  # Log into the Docker CLI
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
-  # Take these images and push them to DockerHub 
-  - docker push farhaadsheikhmohammed873/client
-  - docker push farhaadsheikhmohammed873/server
-  - docker push farhaadsheikhmohammed873/worker
-  - docker push farhaadsheikhmohammed873/nginx
+  - docker push $DOCKER_ID/client
+  - docker push $DOCKER_ID/server
+  - docker push $DOCKER_ID/worker
+  - docker push $DOCKER_ID/nginx
 
 
   
