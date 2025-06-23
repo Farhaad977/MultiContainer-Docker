@@ -13,7 +13,7 @@ after_success:
   - docker build -t farhaadsheikhmohammed873/worker -f ./worker/Dockerfile ./worker
   - docker build -t farhaadsheikhmohammed873/nginx  -f ./nginx/Dockerfile ./nginx
   # Log into the Docker CLI
-  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password---password-stdin
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
   # Take these images and push them to DockerHub 
   - docker push farhaadsheikhmohammed873/client
   - docker push farhaadsheikhmohammed873/server
