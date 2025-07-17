@@ -4,7 +4,7 @@ services:
     image: farhaadsheikhmohammed873/client
     mem_limit: 128m
     hostname: client
-  server:
+  api:
     image: farhaadsheikhmohammed873/server
     mem_limit: 128m
     hostname: api
