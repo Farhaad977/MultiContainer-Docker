@@ -41,19 +41,27 @@ pgClient.on('connect', (client) => {
 
 // Redis Client Setup
 const redis = require('redis');
+
+let isRedisConnected = false;
+let isRedisPublisherConnected = false;
+
 const redisClient = redis.createClient({
   socket: {
     host: keys.redisHost,
     port: keys.redisPort,
   },
 });
+
 const redisPublisher = redisClient.duplicate();
 
 (async () => {
   try {
     await redisClient.connect();
+    isRedisConnected = true;
     console.log('✅ Redis client connected');
+
     await redisPublisher.connect();
+    isRedisPublisherConnected = true;
     console.log('✅ Redis publisher connected');
   } catch (err) {
     console.error('❌ Redis connection failed:', err);
@@ -86,6 +94,11 @@ app.get('/api/values/all', async (req, res) => {
 });
 
 app.get('/api/values/current', async (req, res) => {
+  if (!isRedisConnected) {
+    console.error('❌ Redis not connected for GET /current');
+    return res.status(503).send('Redis not connected');
+  }
+
   try {
     const values = await redisClient.hGetAll('values');
     res.send(values);
@@ -94,8 +107,6 @@ app.get('/api/values/current', async (req, res) => {
     res.status(500).send('Error fetching current values');
   }
 });
-
-// 🔍 Diagnostic routes
 
 app.get('/api/pg-test', async (req, res) => {
   try {
@@ -108,6 +119,11 @@ app.get('/api/pg-test', async (req, res) => {
 });
 
 app.get('/api/redis-test', async (req, res) => {
+  if (!isRedisConnected) {
+    console.error('❌ Redis not connected for redis-test');
+    return res.status(503).send('Redis not connected');
+  }
+
   try {
     await redisClient.hSet('values', 'debug', 'ok');
     const data = await redisClient.hGetAll('values');
@@ -118,7 +134,15 @@ app.get('/api/redis-test', async (req, res) => {
   }
 });
 
-// 🧮 Submit new value
+app.get('/api/health', (req, res) => {
+  res.send({
+    redis: isRedisConnected,
+    redisPublisher: isRedisPublisherConnected,
+    postgres: true,
+    status: 'OK',
+  });
+});
+
 app.post('/api/values', async (req, res) => {
   const index = req.body.index;
   console.log('📥 Received index:', index);
@@ -128,13 +152,21 @@ app.post('/api/values', async (req, res) => {
     return res.status(422).send('Index too high');
   }
 
+  if (!isRedisConnected || !isRedisPublisherConnected) {
+    console.error('❌ Redis not connected for POST /values');
+    return res.status(503).send('Redis not connected');
+  }
+
   try {
     console.log('🔁 Writing placeholder to Redis...');
     await redisClient.hSet('values', index, 'Nothing yet!');
+
     console.log('📢 Publishing to Redis...');
     await redisPublisher.publish('insert', index);
+
     console.log('📝 Writing to Postgres...');
     await pgClient.query('INSERT INTO values(number) VALUES($1)', [index]);
+
     console.log('✅ All done for index', index);
     res.send({ working: true });
   } catch (err) {
