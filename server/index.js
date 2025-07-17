@@ -56,6 +56,7 @@ const redisPublisher = redisClient.duplicate();
 
 (async () => {
   try {
+    console.log('🔍 Attempting Redis connection to:', keys.redisHost, keys.redisPort);
     await redisClient.connect();
     isRedisConnected = true;
     console.log('✅ Redis client connected');
