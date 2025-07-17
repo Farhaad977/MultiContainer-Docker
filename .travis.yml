@@ -22,6 +22,7 @@ after_success:
   - docker push $DOCKER_ID/worker
   - docker push $DOCKER_ID/nginx
 
+
 deploy:
   provider: elasticbeanstalk
   region: 'eu-north-1'
