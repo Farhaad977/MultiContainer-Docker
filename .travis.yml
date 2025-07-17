@@ -1,0 +1,24 @@
+language: node_js
+node_js:
+  - "16"
+sudo: required
+services:
+  - docker
+before_install: 
+  - docker build -t farhaadsheikhmohammed873/reactapptest -f ./client/Dockerfile.dev ./client
+script:
+  - echo "Starting tests..."
+  - docker run -e CI=true farhaadsheikhmohammed873/reactapptest npm run test -- --watchAll=false
+  - echo "Test command completed"
+
+after_success: 
+  - docker build -t farhaadsheikhmohammed873/client -f ./client/Dockerfile ./client
+  - docker build -t farhaadsheikhmohammed873/server -f ./server/Dockerfile ./server
+  - docker build -t farhaadsheikhmohammed873/worker -f ./worker/Dockerfile ./worker
+  - docker build -t farhaadsheikhmohammed873/nginx  -f ./nginx/Dockerfile ./nginx
+  - echo "Attempting Docker login..."
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+  - docker push $DOCKER_ID/client
+  - docker push $DOCKER_ID/server
+  - docker push $DOCKER_ID/worker
+  - docker push $DOCKER_ID/nginx
