@@ -9,7 +9,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Print env keys for verification
+// Logging env vars
 console.log('ENVIRONMENT VARIABLES:', {
   PGHOST: process.env.PGHOST,
   PGUSER: process.env.PGUSER,
@@ -28,15 +28,14 @@ const pgClient = new Pool({
   database: keys.pgDatabase,
   password: keys.pgPassword,
   port: keys.pgPort,
-  ssl:
-    process.env.NODE_ENV !== 'production'
-      ? false
-      : { rejectUnauthorized: false },
+  ssl: process.env.NODE_ENV !== 'production' ? false : { rejectUnauthorized: false },
 });
 
 pgClient.on('connect', (client) => {
+  console.log('✅ Connected to Postgres. Ensuring table...');
   client
     .query('CREATE TABLE IF NOT EXISTS values (number INT)')
+    .then(() => console.log('✅ Table `values` ready'))
     .catch((err) => console.error('PG INIT ERROR:', err));
 });
 
@@ -48,27 +47,23 @@ const redisClient = redis.createClient({
     port: keys.redisPort,
   },
 });
-
 const redisPublisher = redisClient.duplicate();
 
 (async () => {
   try {
     await redisClient.connect();
+    console.log('✅ Redis client connected');
     await redisPublisher.connect();
-    console.log('Connected to Redis successfully.');
+    console.log('✅ Redis publisher connected');
   } catch (err) {
-    console.error('Redis connection failed:', err);
+    console.error('❌ Redis connection failed:', err);
   }
 })();
 
-// --- Express Routes ---
+// --- Routes ---
 
 app.get('/', (req, res) => {
   res.send('Hi');
-});
-
-app.get('/api/test', (req, res) => {
-  res.send('Server is running!');
 });
 
 app.get('/api/env-check', (req, res) => {
@@ -85,7 +80,7 @@ app.get('/api/values/all', async (req, res) => {
     const values = await pgClient.query('SELECT * from values');
     res.send(values.rows);
   } catch (err) {
-    console.error('Postgres fetch error:', err);
+    console.error('❌ Postgres fetch error:', err);
     res.status(500).send('Error fetching values from Postgres');
   }
 });
@@ -95,30 +90,60 @@ app.get('/api/values/current', async (req, res) => {
     const values = await redisClient.hGetAll('values');
     res.send(values);
   } catch (err) {
-    console.error('Redis fetch error:', err);
+    console.error('❌ Redis fetch error:', err);
     res.status(500).send('Error fetching current values');
   }
 });
 
+// 🔍 Diagnostic routes
+
+app.get('/api/pg-test', async (req, res) => {
+  try {
+    const result = await pgClient.query('SELECT NOW()');
+    res.send(result.rows);
+  } catch (err) {
+    console.error('❌ PG test failed:', err);
+    res.status(500).send('Postgres test failed');
+  }
+});
+
+app.get('/api/redis-test', async (req, res) => {
+  try {
+    await redisClient.hSet('values', 'debug', 'ok');
+    const data = await redisClient.hGetAll('values');
+    res.send(data);
+  } catch (err) {
+    console.error('❌ Redis test failed:', err);
+    res.status(500).send('Redis test failed');
+  }
+});
+
+// 🧮 Submit new value
 app.post('/api/values', async (req, res) => {
   const index = req.body.index;
+  console.log('📥 Received index:', index);
 
   if (parseInt(index) > 40) {
+    console.log('❌ Index too high:', index);
     return res.status(422).send('Index too high');
   }
 
   try {
+    console.log('🔁 Writing placeholder to Redis...');
     await redisClient.hSet('values', index, 'Nothing yet!');
+    console.log('📢 Publishing to Redis...');
     await redisPublisher.publish('insert', index);
+    console.log('📝 Writing to Postgres...');
     await pgClient.query('INSERT INTO values(number) VALUES($1)', [index]);
+    console.log('✅ All done for index', index);
     res.send({ working: true });
   } catch (err) {
-    console.error('POST /api/values error:', err);
+    console.error('🔥 POST /api/values error:', err);
     res.status(500).send('Error processing the value');
   }
 });
 
-// Start Express server
+// Start server
 app.listen(5000, '0.0.0.0', () => {
-  console.log('Listening on port 5000');
+  console.log('🚀 Listening on port 5000');
 });
