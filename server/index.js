@@ -92,5 +92,7 @@ const redisPublisher = redisClient.duplicate();
 app.listen(5000, '0.0.0.0', () => {
   console.log('Listening on port 5000');
 });
-
+app.get('/test', (req, res) => {
+  res.send('Server is running!');
+});
 })();
