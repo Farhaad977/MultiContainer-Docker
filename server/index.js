@@ -49,7 +49,12 @@ const redisClient = redis.createClient({
   socket: {
     host: keys.redisHost,
     port: keys.redisPort,
+    tls: true
   },
+});
+
+redisClient.on('error', (err) => {
+  console.error('❌ Redis Client Error', err);
 });
 
 const redisPublisher = redisClient.duplicate();
