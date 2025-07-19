@@ -5,8 +5,13 @@ const redisClient = createClient({
   socket: {
     host: keys.redisHost,
     port: keys.redisPort,
+    tls: true, 
   },
   // retry_strategy replaced by built-in reconnect in v4
+});
+
+redisClient.on('connect', () => {
+  console.log('✅ Redis client connected');
 });
 
 redisClient.on('error', (err) => {
@@ -14,6 +19,10 @@ redisClient.on('error', (err) => {
 });
 
 const sub = redisClient.duplicate();
+
+sub.on('connect', () => {
+  console.log('✅ Redis subscriber connected');
+});
 
 async function start() {
   await redisClient.connect();
